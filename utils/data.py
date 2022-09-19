@@ -7,8 +7,12 @@ import pandas as pd
 import cv2
 import shutil
 import random
+from torch.utils.data import DataLoader
 import torch
+from tqdm import tqdm
 
+from .evaluation import get_top_model
+from FISHClass.datasets import MYCN
 from .visualize import bbox_on_image
 from .class_names import CLASS_NAMES
 from .device import best_gpu
@@ -135,11 +139,14 @@ def create_h5_training(root, out_name, split=[0.9, 0.1]):
     _create_h5_file(h5_dict, out_name, split)
     
     
-def create_annotation_images(base, out, n):
+def create_annotation_images(base, out, n, sample=None):
     
     files = filelist(base, "png")
     random.shuffle(files)
-    files = [x for x in files if "S19" in x.stem or "S29" in x.stem]
+    if isinstance(sample, str):
+        files = [x for x in files if sample in x.stem]
+    else:
+        files = [x for x in files if "S19" in x.stem or "S29" in x.stem]
     
     i = 0
     for file in files:
@@ -165,10 +172,8 @@ def collate(batch):
         
     return ims , targets
 
-def get_bbox_prediction(fasterrcnn_model, image, target=None, ret_bbox_image=False, bbox_im_threshold=0):
+def get_bbox_prediction(fasterrcnn_model, image, target=None, ret_bbox_image=False, device="cuda", bbox_im_threshold=0):
     
-    
-    device = best_gpu()
     fasterrcnn_model.eval()
     fasterrcnn_model.to(device)
     
@@ -214,7 +219,7 @@ def get_train_val_test_idxs(n_samples, split=[0.8, 0.1, 0.1]):
     
     n_train = int(n_samples*split[0])
     n_val = int(n_samples*split[1])
-    n_test = int(n_samples - n_train - n_val)
+    #n_test = int(n_samples - n_train - n_val)
     
     train_idxs = idxs[:n_train]
     val_idxs = idxs[n_train:n_train+n_val]
@@ -222,4 +227,42 @@ def get_train_val_test_idxs(n_samples, split=[0.8, 0.1, 0.1]):
     
     return np.array(train_idxs).astype(int), np.array(val_idxs).astype(int), np.array(test_idxs).astype(int)
     
+
+def create_boxes_h5(fasterrcnn_path, out_name, device=None, h5_in_file="/data_isilon_main/isilon_images/10_MetaSystems/MetaSystemsData/MYCN_SpikeIn/results/h5/trainset_cleaned_small.h5", n=[None, None, None]):
     
+    if isinstance(device, type(None)):
+        device = best_gpu()
+      
+    model = get_top_model(fasterrcnn_path)
+    model.to(device)
+    model.eval()
+    
+    train_set = MYCN(h5_in_file, dataset="train", norm_type=None, transform=None, n=n[0])
+    val_set = MYCN(h5_in_file, dataset="val", norm_type=None, transform=None,  n=n[1])
+    test_set = MYCN(h5_in_file, dataset="test", norm_type=None, transform=None,  n=n[2])
+    
+    train_loader = DataLoader(train_set, batch_size=32, shuffle=True, num_workers=2)
+    val_loader = DataLoader(val_set, batch_size=32, shuffle=True, num_workers=2)
+    test_loader = DataLoader(test_set, batch_size=32, shuffle=True, num_workers=2)
+    
+    data = {}
+    for set_name, loader in zip(["train", "val", "test"], [train_loader, val_loader, test_loader]):
+        X_tmp, y_tmp = [], []
+        for X, y in tqdm(loader):
+            
+            y_tmp.extend(y.numpy())
+            X = [{k: v.detach().cpu() for k, v in result.items()} for result in model(X.to(device))]
+            X_tmp.append(out2np(X).numpy())
+            
+        X_tmp = np.vstack(X_tmp)
+        y_tmp = np.array(y_tmp)
+        
+        data[set_name] = {"X": X_tmp, "y": y_tmp}
+        
+    with h5py.File(out_name, "w") as fout:
+        
+        for key, item in data.items():
+            
+            fout.create_group(key)
+            fout.create_dataset(f"{key}/X", data=item["X"])
+            fout.create_dataset(f"{key}/y", data=item["y"])

@@ -1,0 +1,33 @@
+trained_model_paths: {
+
+  BasicClassifier: /home/simon_g/src/results/trained_models/LINEAR_MODELS,
+
+  LSTMClassifier: /home/simon_g/src/results/trained_models/LSTM_MODELS,
+
+  FasterRCNNModel: /home/simon_g/src/results/trained_models/FASTER-R-CNN,
+
+  WeightedFeaturespaceClassifier: /home/simon_g/src/results/trained_models/WEIGHTEDFEATURESPACE_MODELS,
+
+  FeaturespaceClassifier: /home/simon_g/src/results/trained_models/FEATURESPACE_MODELS,
+
+  ClassificationCNN: /home/simon_g/src/results/trained_models/CNN_MODELS
+  
+  }
+
+AreaModel_kwargs: {
+  threshold_type: BasicThresholder,
+  norm_type: ZeroMinOneMaxNormer,
+  norm_kwargs: {type: "imagewise"},
+  threshold_kwargs: {threshold: 0.5},
+  threshold_type: BasicThresholder,
+  classification_kwargs: {area_threshold: 0.02}
+}
+
+SpotdetectionModel_kwargs: {
+  threshold_type: BasicThresholder,
+  norm_type: ZeroMinOneMaxNormer,
+  norm_kwargs: {type: "imagewise"},
+  threshold_kwargs: {threshold: 0.6},
+  threshold_type: BasicThresholder,
+  classification_kwargs: {min_red: 2, proportion: 4}
+}

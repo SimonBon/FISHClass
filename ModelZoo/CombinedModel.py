@@ -6,10 +6,10 @@ from pathlib import Path
 
 class CombinedModel(nn.Module):
     
-    def __init__(self, fasterrcnn_path, basicmodel_path=None, lstmmodel_path=None):
+    def __init__(self, fasterrcnn_path, classification_path):
         super().__init__()
         
-        self.classification_model, self.box_model = self.__define_models(fasterrcnn_path, basicmodel_path, lstmmodel_path)
+        self.classification_model, self.box_model = self.__define_models(fasterrcnn_path, classification_path)
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
         
@@ -41,20 +41,11 @@ class CombinedModel(nn.Module):
             return pred
 
         
-    def __define_models(self, fasterrcnn_path, basicmodel_path, lstmmodel_path):
+    def __define_models(self, fasterrcnn_path, classification_path):
         
         fasterrcnn_path = Path(fasterrcnn_path)
-        
-        if isinstance(basicmodel_path, type(None)) and isinstance(lstmmodel_path, type(None)):
-            raise ValueError("You must provde one of lstmmodel_path and basicmodel_path!")
-        
-        if not isinstance(basicmodel_path, type(None)) and not isinstance(lstmmodel_path, type(None)):
-            raise ValueError("You can only define basicmodel_path or lstmmodel_path, not both!")
-        
-        if basicmodel_path:
-            classification_path = Path(basicmodel_path)
-        elif lstmmodel_path:
-            classification_path = Path(lstmmodel_path)
+    
+        classification_path = Path(classification_path)
     
         if fasterrcnn_path.is_file():
             box_model = model_from_file(str(fasterrcnn_path))

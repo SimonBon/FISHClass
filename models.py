@@ -57,19 +57,9 @@ def AdaptedResNet50(weights=None, drop_p=0.5):
     return model
 
 
-def FeaturespaceClassifier(cnnmodel_path, boxmodel_path, device="cuda", out_channel=32, box_featurespace_size=600):
+def FeaturespaceClassifier(cnnmodel_path, boxmodel_path, device="cuda", out_channel=32, box_featurespace_size=600, drop_p=0.5):
     
-    model = __feature(cnnmodel_path, boxmodel_path, device=device, out_channel=out_channel, box_featurespace_size=box_featurespace_size)
-    
-    model.train_fn = MethodType(Featurespace_fns.train_fn, model)
-    model.validation_fn = MethodType(Featurespace_fns.validation_fn, model)
-    
-    return model
-
-
-def WeightedFeaturespaceClassifier(cnnmodel_path, boxmodel_path, classifiermodel_path, device="cuda", out_channel=32, box_featurespace_size=600):
-    
-    model = __weight_feature(cnnmodel_path, boxmodel_path, classifiermodel_path, device=device, out_channel=out_channel, box_featurespace_size=box_featurespace_size)
+    model = __feature(cnnmodel_path, boxmodel_path, device=device, out_channel=out_channel, box_featurespace_size=box_featurespace_size, drop_p=drop_p)
     
     model.train_fn = MethodType(Featurespace_fns.train_fn, model)
     model.validation_fn = MethodType(Featurespace_fns.validation_fn, model)
@@ -77,9 +67,19 @@ def WeightedFeaturespaceClassifier(cnnmodel_path, boxmodel_path, classifiermodel
     return model
 
 
-def CombinedModel(fasterrcnn_path: Union[Path, str], lstmmodel_path: Union[Path, str]=None, basicmodel_path: Union[Path, str]=None):
+def WeightedFeaturespaceClassifier(cnnmodel_path, boxmodel_path, classifiermodel_path, device="cuda", out_channel=32, box_featurespace_size=600, drop_p=0.5):
     
-    model = __combined(fasterrcnn_path=fasterrcnn_path, lstmmodel_path=lstmmodel_path, basicmodel_path=basicmodel_path)
+    model = __weight_feature(cnnmodel_path, boxmodel_path, classifiermodel_path, device=device, out_channel=out_channel, box_featurespace_size=box_featurespace_size, drop_p=drop_p)
+    
+    model.train_fn = MethodType(Featurespace_fns.train_fn, model)
+    model.validation_fn = MethodType(Featurespace_fns.validation_fn, model)
+    
+    return model
+
+
+def CombinedModel(fasterrcnn_path: Union[Path, str], classification_path: Union[Path, str]=None):
+    
+    model = __combined(fasterrcnn_path=fasterrcnn_path, classification_path=classification_path)
     
     return model
 

@@ -38,7 +38,7 @@ def add_bbox(im, bbox, label):
         pass
         
         
-def plot_results(results_list, return_image=False):
+def plot_results(results_list, return_image=False, accuracy_ylim=[0,105]):
     
     results_df = pd.DataFrame(results_list)
     
@@ -50,13 +50,17 @@ def plot_results(results_list, return_image=False):
             acc = ax.plot([], label="accuracy")
             ax2 = ax.twinx()
             ax2.plot(items, color=acc[0].get_color())
-            #ax2.set_ylim(0,1.1)
+            ax2.set_ylim(accuracy_ylim[0], accuracy_ylim[1])
+            ax2.set_ylabel("Accuracy /%")
             
         else:
             ax.plot(items)
         
+        ax.set_xlabel("Epoch")
+        ax.set_ylabel("Loss")
+        
     ax.set_yscale("log")
-    ax.legend(results_df.columns)
+    ax.legend(results_df.columns, bbox_to_anchor=[0.5, 1.06], ncol=3, loc="center")
     
     if return_image:
         return fig

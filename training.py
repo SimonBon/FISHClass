@@ -3,12 +3,13 @@ from tqdm import tqdm
 from FISHClass.utils.device import best_gpu
 from FISHClass.utils.training import TrainingScheduler
 
-def train(epochs, model, training_loader, validation_loader, loss_fn, optimizer, save_dir, scheduler=None, patients=50, use_gpu=True, parallel=False):
+def train(epochs, model, training_loader, validation_loader, loss_fn, optimizer, save_dir, scheduler=None, patients=50, use_gpu=True, device=None):
     
     model_saver = TrainingScheduler(model, optimizer, save_dir, patients)
     
-    device = torch.device(best_gpu() if torch.cuda.is_available() and use_gpu else "cpu")
-        
+    if isinstance(device, type(None)):
+        device = torch.device(best_gpu() if torch.cuda.is_available() and use_gpu else "cpu")
+    
     model.to(device)
     
     ret_values = []

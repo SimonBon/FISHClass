@@ -8,13 +8,14 @@ from FISHClass.utils.evaluation import get_top_model, model_from_file
 
 class FeaturespaceClassifier(nn.Module):
     
-    def __init__(self, cnnmodel_path, boxmodel_path, device="cuda", out_channel=32, box_featurespace_size=600):
+    def __init__(self, cnnmodel_path, boxmodel_path, device="cuda", out_channel=32, box_featurespace_size=600, drop_p=0.5):
         
         self.cnnmodel_path = cnnmodel_path
         self.boxmodel_path = boxmodel_path
         self.device = device
         self.out_channel = out_channel
         self.box_featurespace_size = box_featurespace_size
+        self.drop_p = drop_p
         
         self.kwargs = {k: v for k, v in self.__dict__.items()}
         
@@ -29,8 +30,10 @@ class FeaturespaceClassifier(nn.Module):
         self.fc = nn.Sequential(
             nn.Linear(first_fc_size, 100),
             nn.ReLU(),
+            nn.Dropout(drop_p),
             nn.Linear(100, 100),
             nn.ReLU(),
+            nn.Dropout(drop_p),
             nn.Linear(100, 1)
             )
         
@@ -47,7 +50,7 @@ class FeaturespaceClassifier(nn.Module):
         cnn_out = cnn_out.detach()
         box_out = self.box_model(X)
         
-        box_feature_space = out2np(box_out, device="cuda")
+        box_feature_space = out2np(box_out, device=self.device)
         box_feature_space = torch.flatten(box_feature_space, start_dim=1)
         box_feature_space = box_feature_space.detach()
 
@@ -75,3 +78,10 @@ class FeaturespaceClassifier(nn.Module):
         box_model = get_model(Path(boxmodel_path), self.device)
             
         return box_model, cnn_model
+    
+    
+    def redefine_device(self, device):
+            
+        self.device = device        
+        self.box_model.to(device)
+        self.cnn_model.to(device)

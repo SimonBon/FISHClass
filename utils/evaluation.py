@@ -1,7 +1,7 @@
 import os
 import torch
 import pandas as pd
-from FISHClass import models
+import FISHClass.models
 
 def get_top_model(base):
     
@@ -9,7 +9,7 @@ def get_top_model(base):
     state_dict_dict = []
     for state_dict_path in state_dict_paths:
         
-        state_dict = torch.load(state_dict_path)
+        state_dict = torch.load(state_dict_path, map_location="cpu")
         state_dict_dict.append({"validation_loss": state_dict["validation_loss"],
                                 "path": state_dict_path,
                                 "accuracy": state_dict["accuracy"]})
@@ -25,16 +25,16 @@ def get_top_model(base):
 
 def model_from_file(path):
     
-    state_dict = torch.load(path) 
+    state_dict = torch.load(path, map_location="cpu") 
 
     try:
-        model = getattr(models, state_dict["model_type"])(**state_dict["model_kwargs"])
+        model = getattr(FISHClass.models, state_dict["model_type"])(**state_dict["model_kwargs"])
     except:
-        model = getattr(models, state_dict["model_type"])()
+        model = getattr(FISHClass.models, state_dict["model_type"])()
 
     model.load_state_dict(state_dict["model_state_dict"])
     
-    print(f"Loaded {state_dict['model_type']}")
+    print(f"Loaded {state_dict['model_type']} from {path}")
     
     return model 
     

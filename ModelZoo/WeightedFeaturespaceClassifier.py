@@ -7,18 +7,19 @@ from FISHClass.utils.evaluation import get_top_model, model_from_file
 
 class WeightedFeaturespaceClassifier(nn.Module):
     
-    def __init__(self, cnnmodel_path, boxmodel_path, classifiermodel_path, device="cuda", out_channel=32, box_featurespace_size=600):
+    def __init__(self, cnnmodel_path, boxmodel_path, classifiermodel_path, device="cuda", out_channel=32, box_featurespace_size=600, drop_p=0.5):
         
         self.cnnmodel_path = cnnmodel_path
         self.boxmodel_path = boxmodel_path
         self.classifiermodel_path = classifiermodel_path
-        self.device = device
         self.out_channel = out_channel
         self.box_featurespace_size = box_featurespace_size
+        self.drop_p = drop_p
 
         self.kwargs = {k: v for k, v in self.__dict__.items()}
 
         super().__init__()
+        self.device = device
         
         self.box_model, self.cnn_model,  self.classifier_model = self.__define_models(cnnmodel_path, boxmodel_path, classifiermodel_path)
         
@@ -29,16 +30,20 @@ class WeightedFeaturespaceClassifier(nn.Module):
         self.fc_cnn = nn.Sequential(
             nn.Linear(first_fc_size, 100),
             nn.ReLU(),
+            nn.Dropout(drop_p),
             nn.Linear(100, 100),
             nn.ReLU(),
+            nn.Dropout(drop_p),
             nn.Linear(100, 1)
             )
         
         self.fc_classifier = nn.Sequential(
             nn.Linear(box_featurespace_size, 100),
             nn.ReLU(),
+            nn.Dropout(drop_p),
             nn.Linear(100, 100),
             nn.ReLU(),
+            nn.Dropout(drop_p),
             nn.Linear(100, 1)
         )
         
@@ -58,7 +63,7 @@ class WeightedFeaturespaceClassifier(nn.Module):
         cnn_pred = cnn_pred.detach().squeeze()
         box_fs = self.box_model(X)
         
-        box_fs = out2np(box_fs, device="cuda")
+        box_fs = out2np(box_fs, device=self.device)
         if not isinstance(self.classifier_model, FISHClass.ModelZoo.LSTMModel.LSTMClassifier):
             box_fs = torch.flatten(box_fs, start_dim=1).detach()
         else:
@@ -101,3 +106,10 @@ class WeightedFeaturespaceClassifier(nn.Module):
 
         return box_model, cnn_model, classifier_model
         
+
+    def redefine_device(self, device):
+        
+        self.device = device        
+        self.box_model.to(device)
+        self.cnn_model.to(device)
+        self.classifier_model.to(device)
