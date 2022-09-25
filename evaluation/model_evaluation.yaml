@@ -1,33 +1,39 @@
 trained_model_paths: {
 
-  BasicClassifier: /home/simon_g/src/results/trained_models/LINEAR_MODELS,
+  BasicClassifier: {model_type: CombinedModel, FasterRCNN_path: /home/simon_g/src/results/trained_models/FASTER-R-CNN, path: /home/simon_g/src/results/trained_models/LINEAR_MODELS}, 
 
-  LSTMClassifier: /home/simon_g/src/results/trained_models/LSTM_MODELS,
+  LSTMClassifier: {model_type: CombinedModel, FasterRCNN_path: /home/simon_g/src/results/trained_models/FASTER-R-CNN, path: /home/simon_g/src/results/trained_models/LSTM_MODELS}, 
 
-  FasterRCNNModel: /home/simon_g/src/results/trained_models/FASTER-R-CNN,
+  WeightedFeaturespaceClassifier: {model_type: WeightedFeaturespaceClassifier, path: /home/simon_g/src/results/trained_models/WEIGHTEDFEATURESPACE_MODELS}, 
 
-  WeightedFeaturespaceClassifier: /home/simon_g/src/results/trained_models/WEIGHTEDFEATURESPACE_MODELS,
+  FeaturespaceClassifier: {model_type: FeaturespaceClassifier, path: /home/simon_g/src/results/trained_models/FEATURESPACE_MODELS},
 
-  FeaturespaceClassifier: /home/simon_g/src/results/trained_models/FEATURESPACE_MODELS,
+  ClassificationCNN: {model_type: ClassificationCNN, path: /home/simon_g/src/results/trained_models/CNN_MODELS},
 
-  ClassificationCNN: /home/simon_g/src/results/trained_models/CNN_MODELS
+  WeightedFeaturespaceClassifierGreenMask:  {model_type: WeightedFeaturespaceClassifier, path: /home/simon_g/src/testing/trained_models/weightedfeatureclass/green_mask},
   
+  AreaModel: {
+    model_type: AreaModel, 
+    AreaModel_kwargs: {
+      threshold_type: BasicThresholder,
+      norm_type: ZeroMinOneMaxNormer,
+      norm_kwargs: {type: "imagewise"},
+      threshold_kwargs: {threshold: 0.5},
+      threshold_type: BasicThresholder,
+      classification_kwargs: {area_threshold: 0.02}
+    }
+  },
+
+  SpotdetectionModel: {
+    model_type: SpotdetectionModel,
+    SpotdetectionModel_kwargs: {
+      threshold_type: BasicThresholder,
+      norm_type: ZeroMinOneMaxNormer,
+      norm_kwargs: {type: "imagewise"},
+      threshold_kwargs: {threshold: 0.6},
+      threshold_type: BasicThresholder,
+      classification_kwargs: {min_red: 2, proportion: 4}
+    }
   }
 
-AreaModel_kwargs: {
-  threshold_type: BasicThresholder,
-  norm_type: ZeroMinOneMaxNormer,
-  norm_kwargs: {type: "imagewise"},
-  threshold_kwargs: {threshold: 0.5},
-  threshold_type: BasicThresholder,
-  classification_kwargs: {area_threshold: 0.02}
-}
-
-SpotdetectionModel_kwargs: {
-  threshold_type: BasicThresholder,
-  norm_type: ZeroMinOneMaxNormer,
-  norm_kwargs: {type: "imagewise"},
-  threshold_kwargs: {threshold: 0.6},
-  threshold_type: BasicThresholder,
-  classification_kwargs: {min_red: 2, proportion: 4}
 }

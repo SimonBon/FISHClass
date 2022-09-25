@@ -15,7 +15,7 @@ def get_top_model(base):
                                 "accuracy": state_dict["accuracy"]})
         
     state_dict_df = pd.DataFrame(state_dict_dict)
-    
+    state_dict_df = state_dict_df[state_dict_df['validation_loss'].notna()]
     state_dict_df = state_dict_df.sort_values(by="validation_loss", ascending=False)
 
     best_model = state_dict_df.iloc[-1]
@@ -27,9 +27,9 @@ def model_from_file(path):
     
     state_dict = torch.load(path, map_location="cpu") 
 
-    try:
+    if "model_kwargs" in state_dict.keys():
         model = getattr(FISHClass.models, state_dict["model_type"])(**state_dict["model_kwargs"])
-    except:
+    else:
         model = getattr(FISHClass.models, state_dict["model_type"])()
 
     model.load_state_dict(state_dict["model_state_dict"])

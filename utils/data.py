@@ -219,7 +219,6 @@ def get_train_val_test_idxs(n_samples, split=[0.8, 0.1, 0.1]):
     
     n_train = int(n_samples*split[0])
     n_val = int(n_samples*split[1])
-    #n_test = int(n_samples - n_train - n_val)
     
     train_idxs = idxs[:n_train]
     val_idxs = idxs[n_train:n_train+n_val]

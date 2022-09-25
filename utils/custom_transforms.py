@@ -43,7 +43,7 @@ class RandomRotation(nn.Module):
         self.affine = transforms.RandomAffine(
             degrees=(0,360),
             translate=(0,0.1),
-            scale=(0.9,1.1),
+            scale=(0.8,1.2),
             interpolation=InterpolationMode.NEAREST)
         
     def __call__(self, image, boxes):
@@ -118,7 +118,7 @@ class RandomAffine(torch.nn.Module):
         
     def __init__(self):
         super().__init__()
-        self.transformer = transforms.RandomAffine(degrees=(0,360), translate=(0.1, 0.1), scale=(0.9, 1.1), fill=0)
+        self.transformer = transforms.RandomAffine(degrees=(0,360), translate=(0, 0.2), scale=(0.8, 1.2), fill=0)
 
     def __call__(self, tensor):
         

@@ -15,6 +15,8 @@ class CombinedModel(nn.Module):
         
     def forward(self, images): 
         
+
+        
         with torch.no_grad():
             
             X = [im.to(self.device) for im in images]
@@ -22,6 +24,7 @@ class CombinedModel(nn.Module):
             self.classification_model.to(self.device)
             
             self.box_model.eval()
+            self.box_model.requires_grad=False
             boxes = self.box_model(X)
             
             inters = []

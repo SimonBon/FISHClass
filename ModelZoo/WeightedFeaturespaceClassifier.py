@@ -7,7 +7,7 @@ from FISHClass.utils.evaluation import get_top_model, model_from_file
 
 class WeightedFeaturespaceClassifier(nn.Module):
     
-    def __init__(self, cnnmodel_path, boxmodel_path, classifiermodel_path, device="cuda", out_channel=32, box_featurespace_size=600, drop_p=0.5):
+    def __init__(self, cnnmodel_path, boxmodel_path, classifiermodel_path, device="cuda", out_channel=32, box_featurespace_size=600, drop_p=0.5, sigmoid=False):
         
         self.cnnmodel_path = cnnmodel_path
         self.boxmodel_path = boxmodel_path
@@ -15,6 +15,7 @@ class WeightedFeaturespaceClassifier(nn.Module):
         self.out_channel = out_channel
         self.box_featurespace_size = box_featurespace_size
         self.drop_p = drop_p
+        self.sigmoid = sigmoid
 
         self.kwargs = {k: v for k, v in self.__dict__.items()}
 
@@ -34,7 +35,7 @@ class WeightedFeaturespaceClassifier(nn.Module):
             nn.Linear(100, 100),
             nn.ReLU(),
             nn.Dropout(drop_p),
-            nn.Linear(100, 1)
+            nn.Linear(100, 1),
             )
         
         self.fc_classifier = nn.Sequential(
@@ -48,11 +49,19 @@ class WeightedFeaturespaceClassifier(nn.Module):
         )
         
 
-    def forward(self, X, X2, return_details=False):
+    def forward(self, X, X2, return_details=False, uncertainty=False):
         
-        self.cnn_model.eval()
+        
         self.box_model.eval()
+        self.cnn_model.eval()
         self.classifier_model.eval()
+        
+        if uncertainty:
+
+            for c in self.children():
+                for m in c.modules():
+                    if "dropout" in m.__class__.__name__.lower():
+                        m.train()
         
         self.cnn_model.requires_grad=False
         self.box_model.requires_grad=False
@@ -70,7 +79,11 @@ class WeightedFeaturespaceClassifier(nn.Module):
             box_fs = box_fs.detach()
             
         basic_pred = self.classifier_model(box_fs).detach()
-
+        
+        if self.sigmoid:
+            cnn_pred = torch.sigmoid(cnn_pred).detach()
+            basic_pred = torch.sigmoid(basic_pred).detach()
+            
         cnn_fs = self.conv(cnn_fs)
         cnn_fs = torch.flatten(cnn_fs, start_dim=1)
         
@@ -84,7 +97,11 @@ class WeightedFeaturespaceClassifier(nn.Module):
         final_pred = weighted_cnn + weighted_box
         
         if return_details:
-            return final_pred, cnn_pred, weight_cnn, basic_pred, weight_box
+            return {"final_pred": final_pred,
+                    "cnn_pred": cnn_pred, 
+                    "cnn_weight": weight_cnn,
+                    "basic_pred": basic_pred,
+                    "basic_weight": weight_box}
         
         return final_pred
     
@@ -113,3 +130,15 @@ class WeightedFeaturespaceClassifier(nn.Module):
         self.box_model.to(device)
         self.cnn_model.to(device)
         self.classifier_model.to(device)
+        
+        
+    def predict_uncertainty(self, X, X2, n=10):
+            
+        Xs = []
+        for _ in range(n):
+            Xs.append(torch.sigmoid(self.forward(X, X2, uncertainty=True).squeeze()))
+        
+        Xs = torch.stack(Xs)
+        Xs = Xs.mean(axis=0).cpu().detach().numpy()
+
+        return Xs

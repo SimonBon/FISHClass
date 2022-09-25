@@ -5,6 +5,7 @@ import h5py
 import numpy as np
 from torchvision.transforms import ToTensor, transforms
 from FISHClass.utils import custom_transforms as t
+import torch
 
 from typing import Callable, List, Tuple
 # from CellClass.CNN.data.transforms import NormalizeSample, NormalizeToDataset
@@ -125,7 +126,8 @@ class MYCN(Dataset):
         norm_type: str = None,
         n: int = None,
         channels = ["red", "green", "blue"],
-        double_return = False
+        double_return = False,
+        mask = False
     ):
 
         if isinstance(norm_type, type(None)) and isinstance(transform, type(None)):
@@ -152,6 +154,7 @@ class MYCN(Dataset):
         self.n = n
         self.channels = channels
         self.double_return = double_return
+        self.mask = mask
 
     def __len__(self):
         
@@ -167,30 +170,40 @@ class MYCN(Dataset):
             
 
     def __getitem__(self, index):
-        
-        idxs = []
-        for channel in self.channels:
-            if channel == "red":
-                idxs.append(0)
-            if channel == "green":
-                idxs.append(1)
-            if channel == "blue":
-                idxs.append(2)
 
         with h5py.File(self.root, "r") as dataset:
-            img = dataset[self.dataset]["X"][index]
-            target = dataset[self.dataset]["y"][index]
+            img = np.array(dataset[self.dataset]["X"][index])
+            target = np.array(dataset[self.dataset]["y"][index])
 
+        if img.dtype == np.uint8:
+            img = img/255
+            
+
+        if self.mask:
+            mask = np.zeros_like(img[..., 2])
+            mask[img[..., 2]!=0] = 1
+        
+        
+        if "red" not in self.channels:
+            img[..., 0] = np.zeros_like(img[..., 0])
+        if "green" not in self.channels:
+            img[..., 1] = np.zeros_like(img[..., 1])
+        if "blue" not in self.channels:
+            img[..., 2] = np.zeros_like(img[..., 2])
+            
+        if self.mask:
+            img[..., 2] = mask
+            
         if self.double_return:
             
             normal_image = ToTensor()(img)
             transformed_img = self.transform(img)
-            return (normal_image[idxs, ...], transformed_img[idxs, ...] , target.astype(np.float32))
+            return (normal_image.type(torch.float32), transformed_img.type(torch.float32), target.astype(np.float32))
 
         else:
             
             img = self.transform(img)
-            return img[idxs, ...], target.astype(np.float32)
+            return img.type(torch.float32), target.astype(np.float32)
 
     def define_norm_type(self, norm_type):
         

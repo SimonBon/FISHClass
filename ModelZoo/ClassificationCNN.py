@@ -21,12 +21,14 @@ class ConvBlock(nn.Module):
        
        
 class ClassificationCNN(nn.Module):
-    def __init__(self, layers: list=[3, 16, 64, 128, 256], in_shape: list=[128, 128], drop_p=0.5, norm_type="dataset"):
+    def __init__(self, layers: list=[3, 16, 64, 128, 256], in_shape: list=[128, 128], drop_p=0.5, norm_type="dataset", channels=["red", "green", "blue"], mask=False):
         
         self.layers = layers
         self.in_shape = in_shape
         self.drop_p = drop_p
         self.norm_type = norm_type
+        self.channels = channels
+        self.mask = mask
         
         self.kwargs = {k: v for k, v in self.__dict__.items()}
         

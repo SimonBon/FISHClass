@@ -30,43 +30,55 @@ if __name__ == "__main__":
 
     trained_model_paths = yaml_data["trained_model_paths"]
     
-    models_to_test = ["AreaModel", "CombinedModel", "ClassificationCNN", "FeaturespaceClassifier", "WeightedFeaturespaceClassifier", "SpotdetectionModel"]
-    models_to_test = ["WeightedFeaturespaceClassifier", "CombinedModel", "ClassificationCNN"]
-    combined_classifier_to_test = ["LSTMClassifier", "BasicClassifier"]
-    
-    for test_model in models_to_test:
+    for model_name, model_items in trained_model_paths.items():
 
-        sample = ["S2"]
+        sample = None
         trials = 1
-        n = 500
+        n = None
 
-        if test_model == "AreaModel":
-            model = getattr(models, test_model)(**yaml_data["AreaModel_kwargs"])
-            results = dil.predict_mixture_baseline(model, args.dataset, dataset_kwargs={"norm_type": None, "transform": None}, trials=trials, n=n, sample=sample, save2h5=args.save_h5, save_path=os.path.join(args.out_path, f"{test_model}_results.h5"))
-            save2yaml(results, os.path.join(args.out_path, f"{test_model}_results.yaml"))
+        if model_items["model_type"] == "AreaModel":
+            model = getattr(models, model_items["model_type"])(**model_items["AreaModel_kwargs"])
+            results = dil.predict_mixture_baseline(model, args.dataset, dataset_kwargs={"norm_type": None, "transform": None}, trials=trials, n=n, sample=sample, save2h5=args.save_h5, save_path=os.path.join(args.out_path, f"{model_name}_results.h5"))
+            save2yaml(results, os.path.join(args.out_path, f"{model_name}_results.yaml"))
     
-        elif test_model == "SpotdetectionModel":
+    
+        elif model_items["model_type"] == "SpotdetectionModel":
 
-            model = getattr(models, test_model)(**yaml_data["SpotdetectionModel_kwargs"])
-            results = dil.predict_mixture_baseline(model, args.dataset, dataset_kwargs={"norm_type": None, "transform": None}, trials=trials, n=n, sample=sample, save2h5=args.save_h5, save_path=os.path.join(args.out_path, f"{test_model}_results.h5"))
-            save2yaml(results, os.path.join(args.out_path, f"{test_model}_results.yaml"))
+            model = getattr(models, model_items["model_type"])(**model_items["SpotdetectionModel_kwargs"])
+            results = dil.predict_mixture_baseline(model, args.dataset, dataset_kwargs={"norm_type": None, "transform": None}, trials=trials, n=n, sample=sample, save2h5=args.save_h5, save_path=os.path.join(args.out_path, f"{model_name}_results.h5"))
+            save2yaml(results, os.path.join(args.out_path, f"{model_name}_results.yaml"))
+           
             
-        elif test_model == "CombinedModel":
+        elif model_items["model_type"] == "CombinedModel":
             
-            for classifier in combined_classifier_to_test:
-            
-                model = CombinedModel(fasterrcnn_path=trained_model_paths["FasterRCNNModel"], classification_path=trained_model_paths[classifier])
-                results= dil.predict_mixture(model, args.dataset, device=best_gpu(), batch_size=4, dataset_kwargs={"norm_type": None, "transform": None}, trials=trials, n=n, sample=sample, save2h5=args.save_h5, save_path=os.path.join(args.out_path, f"{test_model}{classifier}_results.h5"))
-                save2yaml(results, os.path.join(args.out_path, f"{test_model}{classifier}_results.yaml"))   
+                model = CombinedModel(fasterrcnn_path=model_items["FasterRCNN_path"], classification_path=model_items["path"])
+                results= dil.predict_mixture(model, args.dataset, device=best_gpu(), batch_size=4, dataset_kwargs={"norm_type": None, "transform": None}, trials=trials, n=n, sample=sample, save2h5=args.save_h5, save_path=os.path.join(args.out_path, f"{model_name}_results.h5"))
+                save2yaml(results, os.path.join(args.out_path, f"{model_name}_results.yaml"))   
+           
                         
-        elif test_model == "FeaturespaceClassifier" or test_model == "WeightedFeaturespaceClassifier":
+        elif model_items["model_type"] == "FeaturespaceClassifier" or model_items["model_type"] == "WeightedFeaturespaceClassifier":
             
-            model = get_top_model(trained_model_paths[test_model])
-            results= dil.predict_mixture(model, args.dataset, batch_size=16, device=best_gpu(), dataset_kwargs={"norm_type": model.cnn_model.norm_type, "transform": None, "double_return": True}, trials=trials, n=n, sample=sample, save2h5=args.save_h5, save_path=os.path.join(args.out_path, f"{test_model}_results.h5"))
-            save2yaml(results, os.path.join(args.out_path, f"{test_model}_results.yaml"))
+            model = get_top_model(model_items["path"])
+            
+            dataset_kwargs = {"norm_type": model.cnn_model.norm_type, 
+                              "transform": None, 
+                              "double_return": True,
+                              "channels": model.cnn_model.channels if hasattr(model.cnn_model, "channels") else None,
+                              "mask": model.cnn_model.mask if hasattr(model.cnn_model, "mask") else False}
+            
+            results= dil.predict_mixture(model, args.dataset, batch_size=16, device=best_gpu(), dataset_kwargs=dataset_kwargs, trials=trials, n=n, sample=sample, save2h5=args.save_h5, save_path=os.path.join(args.out_path, f"{model_name}_results.h5"))
+            save2yaml(results, os.path.join(args.out_path, f"{model_name}_results.yaml"))
+
 
         else:
             
-            model = get_top_model(trained_model_paths[test_model])
-            results= dil.predict_mixture(model, args.dataset, device=best_gpu(), dataset_kwargs={"norm_type": model.norm_type, "transform": None, "double_return": False}, trials=trials, n=n, sample=sample, save2h5=args.save_h5, save_path=os.path.join(args.out_path, f"{test_model}_results.h5"))
-            save2yaml(results, os.path.join(args.out_path, f"{test_model}_results.yaml"))
+            model = get_top_model(model_items["path"])
+            
+            dataset_kwargs = {"norm_type": model.norm_type, 
+                    "transform": None, 
+                    "double_return": False,
+                    "channels": model.channels if hasattr(model, "channels") else None,
+                    "mask": model.mask if hasattr(model, "mask") else False}
+            
+            results= dil.predict_mixture(model, args.dataset, device=best_gpu(), dataset_kwargs=dataset_kwargs, trials=trials, n=n, sample=sample, save2h5=args.save_h5, save_path=os.path.join(args.out_path, f"{model_name}_results.h5"))
+            save2yaml(results, os.path.join(args.out_path, f"{model_name}_results.yaml"))

@@ -38,7 +38,7 @@ def add_bbox(im, bbox, label):
         pass
         
         
-def plot_results(results_list, return_image=False, accuracy_ylim=[0,105]):
+def plot_results(results_list, return_image=False, accuracy_ylim=[0,105], loss_ylim=None):
     
     results_df = pd.DataFrame(results_list)
     
@@ -60,9 +60,32 @@ def plot_results(results_list, return_image=False, accuracy_ylim=[0,105]):
         ax.set_ylabel("Loss")
         
     ax.set_yscale("log")
+    if isinstance(loss_ylim, list):
+        ax.set_ylim([loss_ylim[0], loss_ylim[1]])
     ax.legend(results_df.columns, bbox_to_anchor=[0.5, 1.06], ncol=3, loc="center")
     
     if return_image:
         return fig
     else:
+        plt.show()
+        
+def gridPlot(ims, labels=None, target=None, sz=(10,10), vmin=0, vmax=1, save=None, plot=True):
+    
+    fig, axs = plt.subplots(sz[0], sz[1], figsize=(3*sz[0], 3*sz[1]))
+    print(len(ims))
+    for n, (ax, im) in enumerate(zip(axs.ravel(), ims[:sz[0]*sz[1]])):
+        ax.imshow(im, vmin=vmin, vmax=vmax)
+        ax.set_xticks([])
+        ax.set_yticks([])
+        if isinstance(labels, (list, np.ndarray)) and isinstance(target, (list, np.ndarray)):
+            ax.set_title([labels[n], target[n]])
+        elif isinstance(labels, (list, np.ndarray)):
+            ax.set_title(labels[n])
+        else:
+            ax.set_title(n)
+        
+    if isinstance(save, str):
+        plt.savefig(save)
+        plt.close(fig)
+    if plot: 
         plt.show()
