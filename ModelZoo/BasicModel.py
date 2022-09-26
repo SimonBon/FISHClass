@@ -1,6 +1,8 @@
 import torch
 from torch import nn
 
+#test comment
+
 class BasicClassifier(nn.Module):
     
     def __init__(self, input_size, layers = [128, 128, 128], output_size=1, drop_p=0.5):
