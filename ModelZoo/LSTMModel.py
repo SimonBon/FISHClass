@@ -3,25 +3,27 @@ from torch import nn
 
 class LSTMClassifier(nn.Module):
     
-    def __init__(self, input_size, hidden_size, output_size=1, drop_p=0.3):
+    def __init__(self, input_size, hidden_size, output_size=1, drop_p=0.3, norm_type=None, channels=["red", "green", "blue"], mask=False):
+        
+        super().__init__()
         
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.output_size = output_size
-        
-        self.kwargs = {k: v for k, v in self.__dict__.items()}
-        
-        super().__init__()
+        self.norm_type = norm_type
+        self.channels = channels
+        self.mask = mask
+        self.drop_p = drop_p
         
         self.lstm = nn.LSTM(input_size=input_size, hidden_size=hidden_size, batch_first=True)
         
         self.fc =  nn.Sequential(
             nn.Linear(hidden_size, 100),
             nn.ReLU(),
-            nn.Dropout(drop_p),
+            nn.Dropout(self.drop_p),
             nn.Linear(100, 100),
             nn.ReLU(),
-            nn.Dropout(drop_p),
+            nn.Dropout(self.drop_p),
             nn.Linear(100, output_size)
         )
         

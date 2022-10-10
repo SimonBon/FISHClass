@@ -1,18 +1,6 @@
 trained_model_paths: {
 
-  BasicClassifier: {model_type: CombinedModel, FasterRCNN_path: /home/simon_g/src/results/trained_models/FASTER-R-CNN, path: /home/simon_g/src/results/trained_models/LINEAR_MODELS}, 
-
-  LSTMClassifier: {model_type: CombinedModel, FasterRCNN_path: /home/simon_g/src/results/trained_models/FASTER-R-CNN, path: /home/simon_g/src/results/trained_models/LSTM_MODELS}, 
-
-  WeightedFeaturespaceClassifier: {model_type: WeightedFeaturespaceClassifier, path: /home/simon_g/src/results/trained_models/WEIGHTEDFEATURESPACE_MODELS}, 
-
-  FeaturespaceClassifier: {model_type: FeaturespaceClassifier, path: /home/simon_g/src/results/trained_models/FEATURESPACE_MODELS},
-
-  ClassificationCNN: {model_type: ClassificationCNN, path: /home/simon_g/src/results/trained_models/CNN_MODELS},
-
-  WeightedFeaturespaceClassifierGreenMask:  {model_type: WeightedFeaturespaceClassifier, path: /home/simon_g/src/testing/trained_models/weightedfeatureclass/green_mask},
-  
-  AreaModel: {
+    AreaModel: {
     model_type: AreaModel, 
     AreaModel_kwargs: {
       threshold_type: BasicThresholder,
@@ -34,6 +22,18 @@ trained_model_paths: {
       threshold_type: BasicThresholder,
       classification_kwargs: {min_red: 2, proportion: 4}
     }
-  }
+  },
+
+  Basic-Classifier: /home/simon_g/src/results/BEST_MODELS/SPOT-BASIC,
+
+  LSTM-Classifier: /home/simon_g/src/results/BEST_MODELS/SPOT-LSTM,
+
+  CNN-RGB: /data_isilon_main/isilon_images/10_MetaSystems/MetaSystemsData/MYCN_SpikeIn/TRAIN_RESULTS/CNN/EXP_1,
+
+  CNN-GREEN-MASK: /data_isilon_main/isilon_images/10_MetaSystems/MetaSystemsData/MYCN_SpikeIn/TRAIN_RESULTS/CNN/EXP_2,
+
+  FS-RGB: /data_isilon_main/isilon_images/10_MetaSystems/MetaSystemsData/MYCN_SpikeIn/TRAIN_RESULTS/FEATURESPACE/EXP_1,
+
+  FS-GREEN-MASK: /data_isilon_main/isilon_images/10_MetaSystems/MetaSystemsData/MYCN_SpikeIn/TRAIN_RESULTS/FEATURESPACE/EXP_3
 
 }

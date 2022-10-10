@@ -2,7 +2,8 @@ from __future__ import annotations
 import torch
 from torch import nn
 import torch.nn.functional as F
-
+from FISHClass.ModelZoo._CNNModel_fns import train_fn, validation_fn
+from types import MethodType
 
 class ConvBlock(nn.Module):
     
@@ -22,6 +23,7 @@ class ConvBlock(nn.Module):
        
 class ClassificationCNN(nn.Module):
     def __init__(self, layers: list=[3, 16, 64, 128, 256], in_shape: list=[128, 128], drop_p=0.5, norm_type="dataset", channels=["red", "green", "blue"], mask=False):
+        super().__init__()
         
         self.layers = layers
         self.in_shape = in_shape
@@ -29,17 +31,12 @@ class ClassificationCNN(nn.Module):
         self.norm_type = norm_type
         self.channels = channels
         self.mask = mask
-        
-        self.kwargs = {k: v for k, v in self.__dict__.items()}
-        
-        super().__init__()
-        
+                
         self.features = torch.nn.Sequential()
         for i in range(len(layers)-1):
             self.features.add_module(f"conv{i}", ConvBlock(layers[i], layers[i+1]))
         
         self.last_nodes = int(layers[-1]*(in_shape[0]/2**(len(layers)-1))**2)
-        
             
         self.fc =  nn.Sequential(
             nn.Linear(self.last_nodes, 1000),
@@ -51,6 +48,15 @@ class ClassificationCNN(nn.Module):
             nn.Linear(100, 1)
         )
         
+        self.train_fn = MethodType(train_fn, self)
+        self.validation_fn = MethodType(validation_fn, self)
+
+    #ignore this, only needed to load pickled model
+    def train_fn():
+        pass
+    
+    def validation_fn():
+        pass
 
     def forward(self, X, return_feature_space=False, return_prediction=True):
         

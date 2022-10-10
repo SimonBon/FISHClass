@@ -54,6 +54,7 @@ class TrainingScheduler():
         time = datetime.now().strftime("%Y%m%d_%H%M%S%f")[:-3]
         
         save_dict = {
+            "model": self.model,
             "model_state_dict": self.model.state_dict(),
             "optimizer_state_dict": self.optimizer.state_dict(),
             "accuracy": accuracy,

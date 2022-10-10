@@ -1,9 +1,10 @@
 import torch
+from tqdm import tqdm
 
 def train_fn(self, train_loader, loss_fn, optimizer, scheduler, device):
     
     train_loss = 0
-    for X, X2, y in train_loader:
+    for X, X2, y in tqdm(train_loader):
         
         ŷ = self.forward(X.to(device), X2.to(device)).squeeze()
         loss = loss_fn(ŷ, y.to(device))

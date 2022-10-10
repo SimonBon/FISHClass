@@ -11,16 +11,16 @@ def get_top_model(base):
         
         state_dict = torch.load(state_dict_path, map_location="cpu")
         state_dict_dict.append({"validation_loss": state_dict["validation_loss"],
-                                "path": state_dict_path,
-                                "accuracy": state_dict["accuracy"]})
+                                "path": state_dict_path})
         
     state_dict_df = pd.DataFrame(state_dict_dict)
     state_dict_df = state_dict_df[state_dict_df['validation_loss'].notna()]
     state_dict_df = state_dict_df.sort_values(by="validation_loss", ascending=False)
 
     best_model = state_dict_df.iloc[-1]
+    return best_model["path"]
     
-    return model_from_file(best_model["path"])
+    #return model_from_file(best_model["path"])
 
 
 def model_from_file(path):

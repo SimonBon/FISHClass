@@ -20,6 +20,11 @@ def predict_test(model, dataset_path, device="cuda", dataset_kwargs=None, batch_
         raise ValueError("Please probvide keyword arguments for MYCN Dataset")
 
     model.to(device)
+    try:
+        model.redefine_device(device)
+    except:
+        print("couldtn redefine")
+        
     model.eval()
     
     if verbose:
