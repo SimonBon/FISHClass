@@ -155,18 +155,20 @@ class MYCN(Dataset):
     ):
 
         if isinstance(norm_type, type(None)) and isinstance(transform, type(None)):
+            self.normer = None
             self.transform = (transforms.Compose([ToTensor()]))
         
         elif isinstance(norm_type, str) and isinstance(transform, type(None)):
-            normer = self.define_norm_type(norm_type)
-            self.transform = transforms.Compose([ToTensor(), normer])
+            self.normer = self.define_norm_type(norm_type)
+            self.transform = transforms.Compose([ToTensor()])
         
         elif isinstance(norm_type, type(None)) and isinstance(transform, (list, tuple)):
+            self.normer = None
             self.transform = transforms.Compose([ToTensor(), *transform])
             
         elif isinstance(norm_type, str) and isinstance(transform, (list, tuple)):
-            normer = self.define_norm_type(norm_type)
-            self.transform = transforms.Compose([ToTensor(), *transform, normer])
+            self.normer = self.define_norm_type(norm_type)
+            self.transform = transforms.Compose([ToTensor(), *transform])
                 
         else:
             raise ValueError(f"Could not resolve {transform} or {norm_type}")
@@ -220,14 +222,18 @@ class MYCN(Dataset):
             
         if self.double_return:
             
-            normal_image = ToTensor()(img)
-            transformed_img = self.transform(img)
+            normal_image = self.transform(img)
+            transformed_img = normal_image.clone()
+            if not isinstance(self.normer, type(None)):
+                transformed_img = self.normer(transformed_img)
             return (normal_image.type(torch.float32), transformed_img.type(torch.float32), target.astype(np.float32))
 
         else:
             
-            img = self.transform(img)
-            return img.type(torch.float32), target.astype(np.float32)
+            transformed_img = self.transform(img)
+            if not isinstance(self.normer, type(None)):
+                    transformed_img = self.normer(transformed_img)
+            return transformed_img.type(torch.float32), target.astype(np.float32)
 
     def define_norm_type(self, norm_type):
         

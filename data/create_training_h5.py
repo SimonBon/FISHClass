@@ -13,7 +13,7 @@ import torch
 def parse():
     
     parser = argparse.ArgumentParser()
-    parser.add_argument("-i", "--in_file", type=str, required=True, help="enter the path to your pkl file")
+    parser.add_argument("-i", "--in_file", type=str, required=True, help="enter the path to your .pt file")
     parser.add_argument("-o", "--out_file", type=str, required=True, help="enter the path and filename you want to use as output")
     return parser.parse_args()
 
