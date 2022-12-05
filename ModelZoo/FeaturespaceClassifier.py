@@ -11,7 +11,7 @@ from types import MethodType
 
 class FeaturespaceClassifier(nn.Module):
     
-    def __init__(self, CNNModel, FasterRCNN, device="cpu", out_channel=32, box_featurespace_size=600, drop_p=0.5):
+    def __init__(self, CNNModel, FasterRCNN, device="cpu", out_channel=32, box_featurespace_size=600, drop_p=0.5, custom_loss=False, train_cnn=False):
         
         super().__init__()
         
@@ -19,6 +19,8 @@ class FeaturespaceClassifier(nn.Module):
         self.out_channel = out_channel
         self.box_featurespace_size = box_featurespace_size
         self.drop_p = drop_p
+        self.custom_loss = custom_loss
+        self.train_cnn = train_cnn
         
         if isinstance(FasterRCNN, frcnn):
             self.box_model = FasterRCNN
@@ -62,7 +64,7 @@ class FeaturespaceClassifier(nn.Module):
         
         self.train_fn = MethodType(train_fn, self)
         self.validation_fn = MethodType(validation_fn, self)
-    
+
         self.redefine_device(device)
     
     def train_fn():
@@ -71,16 +73,15 @@ class FeaturespaceClassifier(nn.Module):
     def validation_fn():
         pass
     
-    def forward(self, X, X2, verbose:bool = False, verbose_threshold: float = 0.5):
+    
+    def forward(self, X, X2, verbose:bool = False, verbose_threshold: float = 0.5, return_box_fs: bool = False):
         
-        #self.cnn_model.eval()
         self.box_model.eval()
-        
-        #self.cnn_model.requires_grad=False
         self.box_model.requires_grad=False
         
         cnn_out = self.cnn_model(X2, return_feature_space=True, return_prediction=False)
-        cnn_out = cnn_out.detach()
+        if not self.train_cnn:
+            cnn_out = cnn_out.detach()
         box_out = self.box_model(X)
             
         box_feature_space = out2np(box_out, device=self.device)
@@ -102,6 +103,9 @@ class FeaturespaceClassifier(nn.Module):
         inp = torch.cat((cnn_fs, box_feature_space), axis=1)
         
         out = self.fc(inp)
+        
+        if return_box_fs:
+            return out, box_feature_space
         
         return out 
     

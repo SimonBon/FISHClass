@@ -1,39 +1,41 @@
 trained_model_paths: {
 
-    AreaModel: {
-    model_type: AreaModel, 
-    AreaModel_kwargs: {
-      threshold_type: BasicThresholder,
-      norm_type: ZeroMinOneMaxNormer,
-      norm_kwargs: {type: "imagewise"},
-      threshold_kwargs: {threshold: 0.5},
-      threshold_type: BasicThresholder,
-      classification_kwargs: {area_threshold: 0.02}
-    }
-  },
+  #   AreaModel: {
+  #   model_type: AreaModel, 
+  #   AreaModel_kwargs: {
+  #     threshold_type: BasicThresholder,
+  #     norm_type: ZeroMinOneMaxNormer,
+  #     norm_kwargs: {type: "imagewise"},
+  #     threshold_kwargs: {threshold: 0.5},
+  #     threshold_type: BasicThresholder,
+  #     classification_kwargs: {area_threshold: 0.02}
+  #   }
+  # },
 
-  SpotdetectionModel: {
-    model_type: SpotdetectionModel,
-    SpotdetectionModel_kwargs: {
-      threshold_type: BasicThresholder,
-      norm_type: ZeroMinOneMaxNormer,
-      norm_kwargs: {type: "imagewise"},
-      threshold_kwargs: {threshold: 0.6},
-      threshold_type: BasicThresholder,
-      classification_kwargs: {min_red: 2, proportion: 4}
-    }
-  },
+  # SpotdetectionModel: {
+  #   model_type: SpotdetectionModel,
+  #   SpotdetectionModel_kwargs: {
+  #     threshold_type: BasicThresholder,
+  #     norm_type: ZeroMinOneMaxNormer,
+  #     norm_kwargs: {type: "imagewise"},
+  #     threshold_kwargs: {threshold: 0.6},
+  #     threshold_type: BasicThresholder,
+  #     classification_kwargs: {min_red: 2, proportion: 4}
+  #   }
+  # },
 
-  Basic-Classifier: /home/simon_g/src/results/BEST_MODELS/SPOT-BASIC,
+  # Basic-Classifier: /home/simon_g/src/results/BEST_MODELS/SPOT-BASIC,
 
-  LSTM-Classifier: /home/simon_g/src/results/BEST_MODELS/SPOT-LSTM,
+  # LSTM-Classifier: /home/simon_g/src/results/BEST_MODELS/SPOT-LSTM,
 
-  CNN-RGB: /data_isilon_main/isilon_images/10_MetaSystems/MetaSystemsData/MYCN_SpikeIn/TRAIN_RESULTS/CNN/EXP_1,
+  # CNN-RGB: /data_isilon_main/isilon_images/10_MetaSystems/MetaSystemsData/MYCN_SpikeIn/TRAIN_RESULTS/CNN/EXP_1,
 
-  CNN-GREEN-MASK: /data_isilon_main/isilon_images/10_MetaSystems/MetaSystemsData/MYCN_SpikeIn/TRAIN_RESULTS/CNN/EXP_2,
+  # CNN-GREEN-MASK: /data_isilon_main/isilon_images/10_MetaSystems/MetaSystemsData/MYCN_SpikeIn/TRAIN_RESULTS/CNN/EXP_2,
 
-  FS-RGB: /data_isilon_main/isilon_images/10_MetaSystems/MetaSystemsData/MYCN_SpikeIn/TRAIN_RESULTS/FEATURESPACE/EXP_1,
+  # FS-RGB: /data_isilon_main/isilon_images/10_MetaSystems/MetaSystemsData/MYCN_SpikeIn/TRAIN_RESULTS/FEATURESPACE/EXP_1,
 
-  FS-GREEN-MASK: /data_isilon_main/isilon_images/10_MetaSystems/MetaSystemsData/MYCN_SpikeIn/TRAIN_RESULTS/FEATURESPACE/EXP_3
+  # FS-GREEN-MASK: /data_isilon_main/isilon_images/10_MetaSystems/MetaSystemsData/MYCN_SpikeIn/TRAIN_RESULTS/FEATURESPACE/EXP_3,
+
+  FS-NEW_LOSS_FULL_TRAIN: /data_isilon_main/isilon_images/10_MetaSystems/MetaSystemsData/MYCN_SpikeIn/TRAIN_RESULTS/FEATURESPACE/CNN_TRAIN
 
 }

@@ -1,8 +1,10 @@
-from deepcell.utils.plot_utils import make_outline_overlay, create_rgb_image
+from deepcell.utils.plot_utils import create_rgb_image
 from deepcell.applications import NuclearSegmentation
 import torch
 from cellpose.models import Cellpose
 import numpy as np
+from skimage.segmentation import find_boundaries
+import cv2
 
 class Segmentation():
     
@@ -18,10 +20,11 @@ class Segmentation():
         else:
             device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
             #self.app = Cellpose(gpu=torch.cuda.is_available(), model_type="nuclei", device=device)
-            self.app = Cellpose(gpu=torch.cuda.is_available(), model_type="nuclei", device=device)
+            print(kwargs)
+            self.app = Cellpose(*args, **kwargs, device=device, gpu=torch.cuda.is_available())
 
     # call instance to segment an image
-    def __call__(self, im, *args, return_outline=False, MCIm=None, **kwargs):
+    def __call__(self, im, *args, return_outline=False, MCIm=None, dilate_iteration=1, **kwargs):
     
 
         # if single 2D image is provided increase to 4d with dimensions [1, W, H, 1]
@@ -60,10 +63,10 @@ class Segmentation():
                 if im.ndim > 2:
                     print("No outline can be returned for stacks of images")
                     return im, masks.squeeze(), None
-                outline = self.create_outline(tmp, masks, MCIm)
+                outline = self.create_outline(tmp, masks, MCIm, dilate_iteration=dilate_iteration)
                 return im, masks.squeeze(), outline
             else:
-                outline = self.create_outline(tmp, masks)
+                outline = self.create_outline(tmp, masks, dilate_iteration=dilate_iteration)
                 return im, masks.squeeze(), outline
             
         else:
@@ -72,18 +75,51 @@ class Segmentation():
     
     # create outline image from deepcell.plot_utils
     @staticmethod
-    def create_outline(im, mask, MCIm=None):
+    def create_outline(im, mask, MCIm=None, dilate_iteration=1):
         
         if MCIm:
             rgb = np.expand_dims(MCIm.RGB, 0)
-            outline = make_outline_overlay(rgb, mask)
+            outline = make_outline_overlay(rgb, mask, dilate_iteration)
             
         else:
             rgb = create_rgb_image(im, ["blue"])
-            outline = make_outline_overlay(rgb, mask)
+            outline = make_outline_overlay(rgb, mask, dilate_iteration)
         
         return outline.squeeze()
         
          
-            
+    
+def make_outline_overlay(rgb_data, predictions, dilate_iteration=1):
+    """Overlay a segmentation mask with image data for easy visualization
+
+    Args:
+        rgb_data: 3 channel array of images, output of ``create_rgb_data``
+        predictions: segmentation predictions to be visualized
+
+    Returns:
+        numpy.array: overlay image of input data and predictions
+
+    Raises:
+        ValueError: If predictions are not 4D
+        ValueError: If there is not matching RGB data for each prediction
+    """
+    
+    if len(predictions.shape) != 4:
+        raise ValueError('Predictions must be 4D, got {}'.format(predictions.shape))
+
+    if predictions.shape[0] > rgb_data.shape[0]:
+        raise ValueError('Must supply an rgb image for each prediction')
+
+    boundaries = np.zeros_like(rgb_data)
+    overlay_data = np.copy(rgb_data)
+
+    for img in range(predictions.shape[0]):
+        boundary = find_boundaries(predictions[img, ..., 0], connectivity=1, mode='inner')
+        boundaries[img, boundary > 0, :] = 1
+        kernel = np.ones((3, 3), np.uint8)
+        boundaries = boundaries[0, ..., 0]
+        boundaries = cv2.dilate((boundaries*255).astype(np.uint8), kernel, iterations=dilate_iteration)
         
+    overlay_data[0, boundaries > 0, :] = 1
+
+    return overlay_data

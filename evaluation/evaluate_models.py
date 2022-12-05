@@ -54,5 +54,17 @@ if __name__ == "__main__":
                 model = torch.load(get_top_model(model_items))
 
             print(type(model))
-            results= dil.predict_mixture(model, args.dataset, device=best_gpu(), batch_size=16, dataset_kwargs={"norm_type": model.norm_type, "channels": model.channels, "mask": model.mask, "transform": None, "double_return": isinstance(model, (FISHClass.ModelZoo.FeaturespaceClassifier.FeaturespaceClassifier, FISHClass.ModelZoo.WeightedFeaturespaceClassifier.WeightedFeaturespaceClassifier))}, n=n, sample=sample, save2h5=args.save_h5, save_path=os.path.join(args.out_path, f"{model_name}_results.h5"))
+            results= dil.predict_mixture(model, 
+                                         args.dataset, 
+                                         device=best_gpu(), 
+                                         batch_size=16, 
+                                         dataset_kwargs={"norm_type": model.norm_type, 
+                                                         "channels": model.channels, 
+                                                         "mask": model.mask, 
+                                                         "transform": None, 
+                                                         "double_return": isinstance(model, (FISHClass.ModelZoo.FeaturespaceClassifier.FeaturespaceClassifier, FISHClass.ModelZoo.WeightedFeaturespaceClassifier.WeightedFeaturespaceClassifier))}, 
+                                         n=n, sample=sample, 
+                                         save2h5=args.save_h5, 
+                                         save_path=os.path.join(args.out_path, f"{model_name}_results.h5"))
+            
             save2yaml(results, os.path.join(args.out_path, f"{model_name}_results.yaml"))   
