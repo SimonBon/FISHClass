@@ -1,56 +1,99 @@
+from sys import int_info
 from torch import nn
 import torch
-from pathlib import Path
 
-import FISHClass
 from FISHClass.utils.data import out2np
-from FISHClass.utils.evaluation import get_top_model, model_from_file
+from FISHClass.ModelZoo.FasterRCNNModel import FasterRCNN as frcnn
+from FISHClass.ModelZoo.ClassificationCNN import ClassificationCNN as ccnn
+from FISHClass.ModelZoo._FeaturespaceModel_fns import train_fn, validation_fn
+
+from types import MethodType
 
 class FeaturespaceClassifier(nn.Module):
     
-    def __init__(self, cnnmodel_path, boxmodel_path, device="cuda", out_channel=32, box_featurespace_size=600, drop_p=0.5):
+    def __init__(self, CNNModel, FasterRCNN, device="cpu", out_channel=32, box_featurespace_size=600, drop_p=0.5, custom_loss=False, train_cnn=False):
         
-        self.cnnmodel_path = cnnmodel_path
-        self.boxmodel_path = boxmodel_path
+        super().__init__()
+        
         self.device = device
         self.out_channel = out_channel
         self.box_featurespace_size = box_featurespace_size
         self.drop_p = drop_p
+        self.custom_loss = custom_loss
+        self.train_cnn = train_cnn
         
-        self.kwargs = {k: v for k, v in self.__dict__.items()}
+        if isinstance(FasterRCNN, frcnn):
+            self.box_model = FasterRCNN
+        elif isinstance(FasterRCNN, dict):
+            self.box_model = FasterRCNN["model"]
+        elif isinstance(FasterRCNN, str):
+            self.box_model = torch.load(FasterRCNN)
+            if isinstance(self.box_model, dict):
+                self.box_model = self.box_model["model"]
+                
+        if isinstance(CNNModel, ccnn):
+            self.cnn_model = CNNModel
+        elif isinstance(CNNModel, dict):
+            self.cnn_model = CNNModel["model"]
+        elif isinstance(CNNModel, str):
+            self.cnn_model = torch.load(CNNModel)
+            if isinstance(self.cnn_model, dict):
+                self.cnn_model = self.cnn_model["model"]
         
-        super().__init__()
+        self.norm_type = self.cnn_model.norm_type
+        self.channels = self.cnn_model.channels
+        self.mask = self.cnn_model.mask
+
+        self.last_conv_size = self.cnn_model.features[-1].block[0].out_channels
         
-        self.box_model, self.cnn_model = self.__define_models(cnnmodel_path, boxmodel_path)
+        self.conv = nn.Sequential(nn.Conv2d(in_channels=self.last_conv_size, out_channels=out_channel, kernel_size=3, padding=1))
         
-        last_conv_size = self.cnn_model.features[-1].block[0].out_channels 
-        self.conv = nn.Conv2d(in_channels=last_conv_size, out_channels=out_channel, kernel_size=3, padding=1)
-        first_fc_size = int(((self.cnn_model.in_shape[0]/2**len(self.cnn_model.features))**2)*out_channel) + box_featurespace_size
+        self.first_fc_size = int(((self.cnn_model.in_shape[0]/2**(len(self.cnn_model.features)))**2)*out_channel) + box_featurespace_size
+
+        print(self.first_fc_size)
 
         self.fc = nn.Sequential(
-            nn.Linear(first_fc_size, 100),
+            nn.Linear(self.first_fc_size, 1000),
             nn.ReLU(),
-            nn.Dropout(drop_p),
-            nn.Linear(100, 100),
+            nn.Dropout(self.drop_p),
+            nn.Linear(1000, 100),
             nn.ReLU(),
-            nn.Dropout(drop_p),
+            nn.Dropout(self.drop_p),
             nn.Linear(100, 1)
             )
         
+        self.train_fn = MethodType(train_fn, self)
+        self.validation_fn = MethodType(validation_fn, self)
+
+        self.redefine_device(device)
+    
+    def train_fn():
+        pass
+    
+    def validation_fn():
+        pass
+    
+    
+    def forward(self, X, X2, verbose:bool = False, verbose_threshold: float = 0.5, return_box_fs: bool = False):
         
-    def forward(self, X, X2):
-        
-        self.cnn_model.eval()
         self.box_model.eval()
-        
-        self.cnn_model.requires_grad=False
         self.box_model.requires_grad=False
         
         cnn_out = self.cnn_model(X2, return_feature_space=True, return_prediction=False)
-        cnn_out = cnn_out.detach()
+        if not self.train_cnn:
+            cnn_out = cnn_out.detach()
         box_out = self.box_model(X)
-        
+            
         box_feature_space = out2np(box_out, device=self.device)
+        
+        if verbose:
+            for ii, im in enumerate(box_feature_space):
+                red_spots = (torch.logical_and(im[:, 4] == 1, im[:,5]> verbose_threshold)).sum().detach().cpu().numpy()
+                green_spots = (torch.logical_and(im[:, 4] == 2, im[:,5]> verbose_threshold)).sum().detach().cpu().numpy()
+                clumps = (torch.logical_and(im[:, 4] == 3, im[:,5]> verbose_threshold)).sum().detach().cpu().numpy()
+                
+                print(f"{ii}: REDS: {red_spots}, GREENS: {green_spots}, CLUMPS: {clumps}")
+            
         box_feature_space = torch.flatten(box_feature_space, start_dim=1)
         box_feature_space = box_feature_space.detach()
 
@@ -61,27 +104,15 @@ class FeaturespaceClassifier(nn.Module):
         
         out = self.fc(inp)
         
-        return out    
-
-    def __define_models(self, cnnmodel_path, boxmodel_path):
+        if return_box_fs:
+            return out, box_feature_space
         
-        def get_model(path, device):
-            
-            if path.is_file():
-                model = model_from_file(str(path)).to(device)
-            elif path.is_dir():
-                model = get_top_model(str(path)).to(device)
-                
-            return model  
-        
-        cnn_model = get_model(Path(cnnmodel_path), self.device)
-        box_model = get_model(Path(boxmodel_path), self.device)
-            
-        return box_model, cnn_model
+        return out 
     
     
     def redefine_device(self, device):
             
-        self.device = device        
+        self.device = device    
+        self.to(device)    
         self.box_model.to(device)
         self.cnn_model.to(device)

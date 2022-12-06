@@ -4,6 +4,9 @@ from torchvision import transforms
 import torch
 from torchvision.transforms import InterpolationMode
 
+import matplotlib.pyplot as plt
+
+
 class RandomBoxFlip(nn.Module):
     
     def __init__(self, ps=(0.5, 0.5)):
@@ -35,7 +38,7 @@ class RandomBoxFlip(nn.Module):
 
         return image, torch.tensor(ret_boxes)
     
-class RandomRotation(nn.Module):
+class RandomBoxRotation(nn.Module):
     
     def __init__(self, ps=(0.5, 0.5)):
         super().__init__()
@@ -48,6 +51,7 @@ class RandomRotation(nn.Module):
         
     def __call__(self, image, boxes):
         
+            
         boxes = boxes.clone()
         image = image.clone()
         box_ims = []
@@ -69,8 +73,10 @@ class RandomRotation(nn.Module):
             ret_boxes.append([min(box[0], box[2]), min(box[1], box[3]), max(box[0], box[2]), max(box[1], box[3])])
             
         boxes_coords = torch.tensor(ret_boxes)
-        
+    
         return image, boxes_coords
+        
+
     
     def get_box_coords(self, box_ims):
         
@@ -142,19 +148,48 @@ class RandomFlip(torch.nn.Module):
     
 class RandomNoise():
     
-    def __init__(self, mean=0, std=1):
+    def __init__(self, mean=[0, 0], std=[0, 0.07]):
         
         self.mean = mean
         self.std = std
     
     def __call__(self, img):
         
+        mean = np.random.uniform(self.mean[0], self.mean[1],1)[0]
+        std = np.random.uniform(self.std[0], self.std[1], 1)[0]
+
+        # random_weight = 0.1*torch.rand(1)
+        # noise = random_weight * torch.normal(mean, std, img.shape)
+        noise = torch.normal(mean, std, img.shape)
+        
+        noise[img==0] = 0
+
+        if np.logical_or(img[2]==0, img[2]==1).all():
+            noise[2] = 0
+    
+        return torch.clip(img + noise, 0, 1)
+    
+class RandomBoxNoise():
+    
+    def __init__(self, mean=[0, 0], std=[0, 0.07]):
+        
+        self.mean = mean
+        self.std = std
+    
+    def __call__(self, img, box):
+        
+        mean = np.random.uniform(self.mean[0], self.mean[1],1)[0]
+        std = np.random.uniform(self.std[0], self.std[1], 1)[0]
+
         random_weight = 0.1*torch.rand(1)
-        noise = random_weight * torch.normal(self.mean, self.std, img.shape)
+        noise = random_weight * torch.normal(mean, std, img.shape)
 
         noise[img==0] = 0
 
-        return img + noise
+        if np.logical_or(img[2]==0, img[2]==1).all():
+            noise[2] = 0
+
+        return torch.clip(img + noise, 0, 1), box
     
 class NormalizeToDataset(torch.nn.Module):
     """Normalize a tensor image w.r.t. to mean and standard deviation of the dataset."""
@@ -170,7 +205,11 @@ class NormalizeToDataset(torch.nn.Module):
         
         for i in range(3):
             
-            tensor[i][tensor[2]!=0] = (tensor[i][tensor[2]!=0] - self.means[i])/self.stds[i]
+            if torch.all(tensor[2]==0):
+                tensor[i][tensor[i]!=0] = (tensor[i][tensor[i]!=0] - self.means[i])/self.stds[i]
+            
+            else:
+                tensor[i][tensor[2]!=0] = (tensor[i][tensor[2]!=0] - self.means[i])/self.stds[i]
         
         return tensor
     
@@ -204,11 +243,9 @@ class ReverseNormalize(torch.nn.Module):
     
 class RandomIntensity(torch.nn.Module):
     
-    def __init__(self, channels=["red", "green", "blue"]):
+    def __init__(self):
         super().__init__()
         
-        self.channels = channels
-        self._channels_dict = {"red": 0, "green": 1, "blue": 2}
         self.lower_scale_limit = -0.5
         self.upper_scale_limit = 0.5
         
@@ -216,14 +253,45 @@ class RandomIntensity(torch.nn.Module):
         
         scale_val = np.random.uniform(
             self.lower_scale_limit, 
-            self.upper_scale_limit
+            self.upper_scale_limit, 
+            3
         )
-        
-        for key, idx in self._channels_dict.items():
+ 
+        for idx, s_val in enumerate(scale_val):
             
-            if key in self.channels:
-                
-                tensor[idx] = tensor[idx]*(1+scale_val)
-                torch.clip(tensor, 0, 1, out=tensor)
+            #dann is es eine maske oder der channel istz komplett schwarz
+            if np.logical_or(tensor[idx]==0, tensor[idx]==1).all():
+                continue
+            
+            tensor[idx] = tensor[idx]*(1+s_val)
+            torch.clip(tensor, 0, 1, out=tensor)
                 
         return tensor
+    
+    
+class RandomBoxIntensity(torch.nn.Module):
+    
+    def __init__(self):
+        super().__init__()
+        
+        self.lower_scale_limit = -0.5
+        self.upper_scale_limit = 0.5
+        
+    def __call__(self, tensor: torch.Tensor, box: torch.Tensor):
+        
+        scale_val = np.random.uniform(
+            self.lower_scale_limit, 
+            self.upper_scale_limit, 
+            3
+        )
+             
+        for i in range(3):
+            if np.logical_or(tensor[i]==0, tensor[i]==1).all():
+                scale_val[i] = 0
+                            
+        for idx, s_val in enumerate(scale_val):
+            
+            tensor[idx] = tensor[idx]*(1+s_val)
+            torch.clip(tensor, 0, 1, out=tensor)
+                
+        return tensor, box

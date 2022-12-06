@@ -1,63 +1,64 @@
 import torch
+import os
 from torch import nn
-from FISHClass.utils.evaluation import get_top_model, model_from_file
-from pathlib import Path
+from FISHClass.utils.data import out2np
 
-
+from FISHClass.ModelZoo.FasterRCNNModel import FasterRCNN as frcnn
+from FISHClass.ModelZoo.LSTMModel import LSTMClassifier as lstm
+from FISHClass.ModelZoo.BasicModel import BasicClassifier as basic
+from FISHClass.utils.evaluation import get_top_model 
+                
 class CombinedModel(nn.Module):
     
-    def __init__(self, fasterrcnn_path, classification_path):
+    def __init__(self, FasterRCNN, ClassifierModel, device="cpu"):
         super().__init__()
         
-        self.classification_model, self.box_model = self.__define_models(fasterrcnn_path, classification_path)
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    
-        
-    def forward(self, images): 
-        
+        if isinstance(FasterRCNN, frcnn):
+            self.box_model = FasterRCNN
+        elif isinstance(FasterRCNN, dict):
+            self.box_model = FasterRCNN["model"]
+        elif isinstance(FasterRCNN, str):
+            if os.path.isdir(FasterRCNN):
+                self.box_model = torch.load(get_top_model(FasterRCNN))["model"]
+            else:
+                self.box_model = torch.load(FasterRCNN)["model"]
 
-        
-        with torch.no_grad():
-            
-            X = [im.to(self.device) for im in images]
-            self.box_model.to(self.device)
-            self.classification_model.to(self.device)
-            
-            self.box_model.eval()
-            self.box_model.requires_grad=False
-            boxes = self.box_model(X)
-            
-            inters = []
-            for box in boxes:
-            
-                pad_sz = 100-len(box["labels"])
                 
-                inter = torch.cat((box["boxes"], box["labels"].unsqueeze(1), box["scores"].unsqueeze(1)), axis=1)
-                inter = torch.cat((inter, torch.zeros(pad_sz, 6).to(self.device)), axis=0)
-                inters.append(inter)
+        if isinstance(ClassifierModel, (lstm, basic)):
+            self.classifier_model = ClassifierModel
+        elif isinstance(ClassifierModel, dict):
+            self.classifier_model = ClassifierModel["model"]
+        elif isinstance(ClassifierModel, str):
+            if os.path.isdir(ClassifierModel):
+                self.classifier_model = torch.load(get_top_model(ClassifierModel))["model"]
+            else:
+                self.classifier_model = torch.load(ClassifierModel)["model"]
             
-            inters = torch.stack(inters)
-                
-            pred = self.classification_model(inters)
-            pred = (pred > 0).int().squeeze()
+        self.norm_type = self.box_model.norm_type
+        self.mask = self.box_model.mask
+        self.channels = self.box_model.channels
+        
+        self.classifier_model.to(device)  
+        self.box_model.to(device)
+             
+    def forward(self, X): 
             
-            return pred
-
+        self.box_model.eval()
+        self.classifier_model.eval()
         
-    def __define_models(self, fasterrcnn_path, classification_path):
+        self.box_model.requires_grad=False
+        self.classifier_model.requires_grad = False
         
-        fasterrcnn_path = Path(fasterrcnn_path)
-    
-        classification_path = Path(classification_path)
-    
-        if fasterrcnn_path.is_file():
-            box_model = model_from_file(str(fasterrcnn_path))
-        elif fasterrcnn_path.is_dir():
-            box_model = get_top_model(str(fasterrcnn_path))
-        
-        if classification_path.is_file():
-            classification_model = model_from_file(str(classification_path))
-        elif classification_path.is_dir():
-            classification_model = get_top_model(str(classification_path))   
+        box_fs = self.box_model(X)
+        box_fs = out2np(box_fs, device=self.device)
             
-        return classification_model, box_model
+        pred = self.classifier_model(box_fs)
+        
+        return pred.squeeze()
+        
+    def redefine_device(self, device):
+        
+        self.device = device     
+        self.to(device)   
+        self.box_model.to(device)
+        self.classifier_model.to(device)

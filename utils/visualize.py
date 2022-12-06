@@ -5,12 +5,12 @@ import pandas as pd
 
 def bbox_on_image(data_dict, sz=(400,400), ret=False, threshold=None):
     
-    im = (np.array(data_dict["image"]*255).transpose(1,2,0)).astype(np.uint8).copy()
-    boxes = np.array(data_dict["boxes"]).astype(int)
-    labels = np.array(data_dict["labels"]).astype(int)
+    im = (np.array(data_dict["image"].cpu().detach().numpy()*255).transpose(1,2,0)).astype(np.uint8).copy()
+    boxes = np.array(data_dict["boxes"].cpu().detach().numpy()).astype(int)
+    labels = np.array(data_dict["labels"].cpu().detach().numpy()).astype(int)
     
     if isinstance(threshold, float):
-        scores = np.array(data_dict["scores"]).astype(float)
+        scores = data_dict["scores"].cpu().detach().numpy().astype(float)
         idxs = (scores > threshold).squeeze()
         boxes = boxes[idxs]
         labels = labels[scores > threshold]
@@ -38,9 +38,13 @@ def add_bbox(im, bbox, label):
         pass
         
         
-def plot_results(results_list, return_image=False, accuracy_ylim=[0,105], loss_ylim=None):
+def plot_results(results_dict, return_image=False, accuracy_ylim=[0,105], loss_ylim=None):
     
-    results_df = pd.DataFrame(results_list)
+    results_df = pd.DataFrame({
+        "accuracy": results_dict["accuracies"] if "accuracies" in results_dict else None,
+        "val_losses": results_dict["val_losses"],
+        "train_losses": results_dict["train_losses"],
+    })
     
     fig, ax = plt.subplots()
     
@@ -69,7 +73,7 @@ def plot_results(results_list, return_image=False, accuracy_ylim=[0,105], loss_y
     else:
         plt.show()
         
-def gridPlot(ims, labels=None, target=None, sz=(10,10), vmin=0, vmax=1, save=None, plot=True):
+def gridPlot(ims, labels=None, target=None, sz=(10,10), vmin=0, vmax=1, save_path=None, plot=True, title=None):
     
     fig, axs = plt.subplots(sz[0], sz[1], figsize=(3*sz[0], 3*sz[1]))
     print(len(ims))
@@ -83,9 +87,25 @@ def gridPlot(ims, labels=None, target=None, sz=(10,10), vmin=0, vmax=1, save=Non
             ax.set_title(labels[n])
         else:
             ax.set_title(n)
+      
+    if isinstance(title, str):       
+        fig.suptitle(title, fontsize=20)
         
-    if isinstance(save, str):
-        plt.savefig(save)
+    if isinstance(save_path, str):
+        plt.savefig(save_path)
         plt.close(fig)
     if plot: 
         plt.show()
+        
+        
+def random_color_segmentation(seg) -> np.ndarray:
+    
+    instances = range(1, seg.max())
+    
+    ret = np.zeros((*seg.shape, 3))
+    
+    for i in instances:
+
+        ret[seg==i, :] = np.random.uniform(0,1,3)
+        
+    return ret

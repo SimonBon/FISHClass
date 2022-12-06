@@ -227,12 +227,12 @@ def get_train_val_test_idxs(n_samples, split=[0.8, 0.1, 0.1]):
     return np.array(train_idxs).astype(int), np.array(val_idxs).astype(int), np.array(test_idxs).astype(int)
     
 
-def create_boxes_h5(fasterrcnn_path, out_name, device=None, h5_in_file="/data_isilon_main/isilon_images/10_MetaSystems/MetaSystemsData/MYCN_SpikeIn/results/h5/trainset_cleaned_small.h5", n=[None, None, None]):
+def create_boxes_h5(fasterrcnn_path, out_name, device=None, h5_in_file="/data_isilon_main/isilon_images/10_MetaSystems/MetaSystemsData/MYCN_SpikeIn/results/h5/trainset_S6_S12_S29_S4_S19.h5", n=[None, None, None]):
     
     if isinstance(device, type(None)):
         device = best_gpu()
       
-    model = get_top_model(fasterrcnn_path)
+    model = torch.load(get_top_model(fasterrcnn_path))["model"]
     model.to(device)
     model.eval()
     

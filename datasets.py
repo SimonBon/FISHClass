@@ -15,33 +15,57 @@ import numpy as np
 
 class FRCNN_MYCN(Dataset):
     
-    def __init__(self, dataset_path: os.PathLike, dataset: str, use_transform=True):
+    def __init__(self, dataset_path: os.PathLike, dataset: str, use_transform=True, channels=["red", "green", "blue"], transforms=[t.RandomBoxRotation(), t.RandomBoxFlip(), t.RandomBoxIntensity(), t.RandomBoxNoise()], mask=False):
         super().__init__()
         self.dataset_path = dataset_path
         self.dataset = dataset
         self.len = self.get_len()
         self.keys = self.get_keys()
-        self.transforms = [t.RandomRotation(), t.RandomBoxFlip()]
+        self.transforms = transforms
         self.h5py_file = h5py.File( self.dataset_path, 'r')
         self.use_transform = use_transform
         self.tt = ToTensor()
+        self.mask = mask
+        self.channels = channels
 
         
     def __getitem__(self, idx):
         
-            image = self.tt(np.array(self.h5py_file.get(f"{self.dataset}/{self.keys[idx]}/image")))
+            image = np.array(self.h5py_file.get(f"{self.dataset}/{self.keys[idx]}/image"))
             boxes = torch.tensor(np.array(self.h5py_file.get(f"{self.dataset}/{self.keys[idx]}/boxes")))
             labels = torch.tensor(np.array(self.h5py_file.get(f"{self.dataset}/{self.keys[idx]}/labels")))
             
-            if self.use_transform:
+            if self.mask:
+                mask = np.zeros_like(image[..., 2])
+                mask[image[..., 2]!=0] = 1
+                
+            if "red" not in self.channels:
+                boxes = boxes[labels!=1]
+                labels = labels[labels!=1]
+                image[..., 0] = np.zeros_like(image[..., 0])
+            if "green" not in self.channels:
+                image[..., 1] = np.zeros_like(image[..., 1])
+            if "blue" not in self.channels:
+                image[..., 2] = np.zeros_like(image[..., 2])
+                
+            if self.mask:
+                image[..., 2] = mask
             
-                for transform in self.transforms:
-                    #s = time()
-                    image, boxes = transform(image, boxes)                
-                    #print(type(transform), time()-s)
-                    
-            return  {"image": image, "boxes": boxes, "labels": labels}
-      
+            image = self.tt(image)
+            
+            if len(boxes) != 0:
+                if self.use_transform:
+                
+                    for transform in self.transforms:
+                        image, boxes = transform(image, boxes)                
+                        
+                return  {"image": image, "boxes": boxes, "labels": labels}
+        
+            else:
+                
+                #benötigt wenn durch die wahl der rgb layer keine boxen mehr vorhanden sind
+                return  {"image": image, "boxes": torch.tensor([[0, 0, image.shape[-1], image.shape[-2]]]), "labels": torch.tensor([0])}
+                
     
     def __len__(self):
         return self.len
@@ -125,24 +149,26 @@ class MYCN(Dataset):
         transform: Callable = None,
         norm_type: str = None,
         n: int = None,
-        channels = ["red", "green", "blue"],
-        double_return = False,
-        mask = False
+        channels: list = ["red", "green", "blue"],
+        double_return: bool = False,
+        mask: bool = False
     ):
 
         if isinstance(norm_type, type(None)) and isinstance(transform, type(None)):
+            self.normer = None
             self.transform = (transforms.Compose([ToTensor()]))
         
         elif isinstance(norm_type, str) and isinstance(transform, type(None)):
-            normer = self.define_norm_type(norm_type)
-            self.transform = transforms.Compose([ToTensor(), normer])
+            self.normer = self.define_norm_type(norm_type)
+            self.transform = transforms.Compose([ToTensor()])
         
         elif isinstance(norm_type, type(None)) and isinstance(transform, (list, tuple)):
+            self.normer = None
             self.transform = transforms.Compose([ToTensor(), *transform])
             
         elif isinstance(norm_type, str) and isinstance(transform, (list, tuple)):
-            normer = self.define_norm_type(norm_type)
-            self.transform = transforms.Compose([ToTensor(), *transform, normer])
+            self.normer = self.define_norm_type(norm_type)
+            self.transform = transforms.Compose([ToTensor(), *transform])
                 
         else:
             raise ValueError(f"Could not resolve {transform} or {norm_type}")
@@ -196,14 +222,18 @@ class MYCN(Dataset):
             
         if self.double_return:
             
-            normal_image = ToTensor()(img)
-            transformed_img = self.transform(img)
+            normal_image = self.transform(img)
+            transformed_img = normal_image.clone()
+            if not isinstance(self.normer, type(None)):
+                transformed_img = self.normer(transformed_img)
             return (normal_image.type(torch.float32), transformed_img.type(torch.float32), target.astype(np.float32))
 
         else:
             
-            img = self.transform(img)
-            return img.type(torch.float32), target.astype(np.float32)
+            transformed_img = self.transform(img)
+            if not isinstance(self.normer, type(None)):
+                    transformed_img = self.normer(transformed_img)
+            return transformed_img.type(torch.float32), target.astype(np.float32)
 
     def define_norm_type(self, norm_type):
         

@@ -3,15 +3,16 @@ from torch import nn
 
 class BasicClassifier(nn.Module):
     
-    def __init__(self, input_size, layers = [128, 128, 128], output_size=1, drop_p=0.5):
+    def __init__(self, input_size, layers = [128, 128, 128], output_size=1, drop_p=0.5, norm_type=None, channels=["red", "green", "blue"], mask=False):
         
         self.input_size = input_size
         self.layers = layers
         self.output_size = output_size
-        
         self.drop_p = drop_p
-        
-        self.kwargs = {k: v for k, v in self.__dict__.items()}
+        self.norm_type = norm_type
+        self.channels = channels
+        self.mask = mask
+        self.drop_p = drop_p
         
         super().__init__()
     
